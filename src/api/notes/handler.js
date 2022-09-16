@@ -12,8 +12,9 @@ const sendResponse = (
 };
 
 class NotesHandler {
-    constructor(service) {
+    constructor(service, validator) {
         this._service = service;
+        this._validator = validator;
 
         // karena instance dari notes handler ini nantinya akan dijalankan
         // pada scope object routes, this yang akan dipake ama js
@@ -28,6 +29,8 @@ class NotesHandler {
 
     postNoteHandler(request, h) {
         try {
+            this._validator.validateNotePayload(request.payload);
+
             const { title = "untitled", body, tags } = request.payload;
             const id = this._service.addNote({ title, body, tags });
             return sendResponse(h, {
@@ -37,7 +40,7 @@ class NotesHandler {
             });
         } catch (error) {
             return sendResponse(h, {
-                code: 404,
+                code: 400,
                 status: "fail",
                 message: error.message,
             });
@@ -69,6 +72,8 @@ class NotesHandler {
 
     putNoteByIdHandler(request, h) {
         try {
+            this._validator.validateNotePayload(request.payload);
+
             const { id } = request.params;
             this._service.editNoteById(id, request.payload);
             return sendResponse(h, {
@@ -76,7 +81,7 @@ class NotesHandler {
             });
         } catch (error) {
             return sendResponse(h, {
-                code: 404,
+                code: 400,
                 status: "fail",
                 message: error.message,
             });
