@@ -1,4 +1,4 @@
-const { tryCatchWrapper, sendResponse } = require("../../utils");
+const { sendResponse } = require("../../utils");
 
 class NotesHandler {
     constructor(service, validator) {
@@ -16,63 +16,53 @@ class NotesHandler {
         this.deleteNoteByIdHandler = this.deleteNoteByIdHandler.bind(this);
     }
 
-    postNoteHandler(request, h) {
-        return tryCatchWrapper(h, async () => {
-            this._validator.validateNotePayload(request.payload);
+    async postNoteHandler(request, h) {
+        this._validator.validateNotePayload(request.payload);
 
-            const { title = "untitled", body, tags } = request.payload;
-            const id = await this._service.addNote({ title, body, tags });
+        const { title = "untitled", body, tags } = request.payload;
+        const id = await this._service.addNote({ title, body, tags });
 
-            return sendResponse(h, {
-                code: 201,
-                message: "Catatan berhasil ditambahkan",
-                data: { noteId: id },
-            });
+        return sendResponse(h, {
+            code: 201,
+            message: "Catatan berhasil ditambahkan",
+            data: { noteId: id },
         });
     }
 
-    getNotesHandler(request, h) {
-        return tryCatchWrapper(h, async () => {
-            const notes = await this._service.getNotes();
+    async getNotesHandler(request, h) {
+        const notes = await this._service.getNotes();
 
-            return sendResponse(h, {
-                data: { notes },
-            });
+        return sendResponse(h, {
+            data: { notes },
         });
     }
 
-    getNoteByIdHandler(request, h) {
-        return tryCatchWrapper(h, async () => {
-            const { id } = request.params;
-            const note = await this._service.getNoteById(id);
+    async getNoteByIdHandler(request, h) {
+        const { id } = request.params;
+        const note = await this._service.getNoteById(id);
 
-            return sendResponse(h, {
-                data: { note },
-            });
+        return sendResponse(h, {
+            data: { note },
         });
     }
 
-    putNoteByIdHandler(request, h) {
-        return tryCatchWrapper(h, async () => {
-            this._validator.validateNotePayload(request.payload);
+    async putNoteByIdHandler(request, h) {
+        this._validator.validateNotePayload(request.payload);
 
-            const { id } = request.params;
-            await this._service.editNoteById(id, request.payload);
+        const { id } = request.params;
+        await this._service.editNoteById(id, request.payload);
 
-            return sendResponse(h, {
-                message: "Catatan berhasil diperbarui",
-            });
+        return sendResponse(h, {
+            message: "Catatan berhasil diperbarui",
         });
     }
 
     async deleteNoteByIdHandler(request, h) {
-        return tryCatchWrapper(h, async () => {
-            const { id } = request.params;
-            await this._service.deleteNoteById(id);
+        const { id } = request.params;
+        await this._service.deleteNoteById(id);
 
-            return sendResponse(h, {
-                message: "Catatan berhasil dihapus",
-            });
+        return sendResponse(h, {
+            message: "Catatan berhasil dihapus",
         });
     }
 }
