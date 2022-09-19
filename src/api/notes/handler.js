@@ -20,17 +20,25 @@ class NotesHandler {
         this._validator.validateNotePayload(request.payload);
 
         const { title = "untitled", body, tags } = request.payload;
-        const id = await this._service.addNote({ title, body, tags });
+        const { id: ownerId } = request.auth.credentials;
+
+        const noteId = await this._service.addNote({
+            title,
+            body,
+            tags,
+            owner: ownerId,
+        });
 
         return sendResponse(h, {
             code: 201,
             message: "Catatan berhasil ditambahkan",
-            data: { noteId: id },
+            data: { noteId },
         });
     }
 
     async getNotesHandler(request, h) {
-        const notes = await this._service.getNotes();
+        const { id: ownerId } = request.auth.credentials;
+        const notes = await this._service.getNotes(ownerId);
 
         return sendResponse(h, {
             data: { notes },
@@ -39,6 +47,9 @@ class NotesHandler {
 
     async getNoteByIdHandler(request, h) {
         const { id } = request.params;
+        const { id: ownerId } = request.auth.credentials;
+
+        await this._service.verifyNoteOwner(id, ownerId);
         const note = await this._service.getNoteById(id);
 
         return sendResponse(h, {
@@ -50,6 +61,9 @@ class NotesHandler {
         this._validator.validateNotePayload(request.payload);
 
         const { id } = request.params;
+        const { id: ownerId } = request.auth.credentials;
+
+        await this._service.verifyNoteOwner(id, ownerId);
         await this._service.editNoteById(id, request.payload);
 
         return sendResponse(h, {
@@ -59,6 +73,9 @@ class NotesHandler {
 
     async deleteNoteByIdHandler(request, h) {
         const { id } = request.params;
+        const { id: ownerId } = request.auth.credentials;
+
+        await this._service.verifyNoteOwner(id, ownerId);
         await this._service.deleteNoteById(id);
 
         return sendResponse(h, {

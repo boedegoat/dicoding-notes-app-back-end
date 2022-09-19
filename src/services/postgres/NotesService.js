@@ -3,6 +3,7 @@ const { Pool } = require("pg");
 const { mapToDBModel } = require("../../utils");
 const InvariantError = require("../../exceptions/InvariantError");
 const NotFoundError = require("../../exceptions/NotFoundError");
+const AuthorizationError = require("../../exceptions/AuthorizationError");
 
 class NotesService {
     constructor() {
@@ -10,32 +11,53 @@ class NotesService {
         this._pool = new Pool();
     }
 
-    async addNote({ title, body, tags }) {
+    async addNote({ title, body, tags, owner }) {
         const id = nanoid(16);
         const createdAt = new Date().toISOString();
         const updatedAt = createdAt;
 
         const query = {
-            text: "INSERT INTO notes VALUES($1, $2, $3, $4, $5, $6) RETURNING id",
-            values: [id, title, body, tags, createdAt, updatedAt],
+            text: "INSERT INTO notes VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+            values: [id, title, body, tags, createdAt, updatedAt, owner],
         };
 
-        const result = await this._pool.query(query);
+        const note = (await this._pool.query(query)).rows[0];
 
-        if (result.rowCount === 0) {
+        if (!note) {
             throw new InvariantError("Catatan gagal ditambahkan");
         }
 
-        return result.rows[0].id;
+        return note.id;
     }
 
-    async getNotes() {
+    async getNotes(owner) {
         const query = {
-            text: "SELECT * FROM notes",
+            text: "SELECT * FROM notes WHERE owner = $1",
+            values: [owner],
         };
 
-        const result = await this._pool.query(query);
-        return result.rows.map(mapToDBModel);
+        const notes = (await this._pool.query(query)).rows;
+        return notes.map(mapToDBModel);
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    async verifyNoteOwner(id, owner) {
+        const query = {
+            text: "SELECT * FROM notes WHERE id = $1",
+            values: [id],
+        };
+
+        const note = (await this._pool.query(query)).rows[0];
+
+        if (!note) {
+            throw new NotFoundError("Catatan tidak ditemukan");
+        }
+
+        if (note.owner !== owner) {
+            throw new AuthorizationError(
+                "Anda tidak berhak mengakses resource ini"
+            );
+        }
     }
 
     async getNoteById(id) {
@@ -44,13 +66,13 @@ class NotesService {
             values: [id],
         };
 
-        const result = await this._pool.query(query);
+        const note = (await this._pool.query(query)).rows[0];
 
-        if (result.rowCount === 0) {
+        if (!note) {
             throw new NotFoundError("Catatan tidak ditemukan");
         }
 
-        return mapToDBModel(result.rows[0]);
+        return mapToDBModel(note);
     }
 
     async editNoteById(id, { title, body, tags }) {
