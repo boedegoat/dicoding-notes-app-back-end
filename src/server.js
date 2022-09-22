@@ -21,7 +21,17 @@ const AuthenticationsService = require("./services/postgres/AuthenticationsServi
 const TokenManager = require("./tokenize/TokenManager");
 const AuthenticationsValidator = require("./validator/authentications");
 
+// collaborations
+const collaborations = require("./api/collaborations");
+const CollaborationsService = require("./services/postgres/CollaborationsService");
+const CollaborationsValidator = require("./validator/collaborations");
+
 const init = async () => {
+    const notesService = new NotesService();
+    const collaborationsService = new CollaborationsService();
+    const usersService = new UsersService();
+    const authenticationsService = new AuthenticationsService();
+
     const server = Hapi.server({
         port: process.env.PORT || 5000,
         host: process.env.HOST || "localhost",
@@ -60,24 +70,32 @@ const init = async () => {
         {
             plugin: notes,
             options: {
-                service: new NotesService(),
+                service: notesService,
                 validator: NotesValidator,
             },
         },
         {
             plugin: users,
             options: {
-                service: new UsersService(),
+                service: usersService,
                 validator: UsersValidator,
             },
         },
         {
             plugin: authentications,
             options: {
-                authenticationsService: new AuthenticationsService(),
-                usersService: new UsersService(),
+                authenticationsService,
+                usersService,
                 tokenManager: TokenManager,
                 validator: AuthenticationsValidator,
+            },
+        },
+        {
+            plugin: collaborations,
+            options: {
+                collaborationsService,
+                notesService,
+                validator: CollaborationsValidator,
             },
         },
     ]);
@@ -106,7 +124,7 @@ const init = async () => {
             }
         }
 
-        return response;
+        return h.continue;
     });
 
     await server.start();

@@ -30,39 +30,31 @@ class NotesService {
         return note.id;
     }
 
-    async getNotes(owner) {
+    async getNotes(userId) {
         const query = {
-            text: "SELECT * FROM notes WHERE owner = $1",
-            values: [owner],
+            text: `
+                SELECT notes.* FROM notes
+                LEFT JOIN collaborations
+                ON collaborations.note_id = notes.id
+                WHERE notes.owner = $1 OR collaborations.user_id = $1
+                GROUP BY notes.id
+            `,
+            values: [userId],
         };
 
         const notes = (await this._pool.query(query)).rows;
         return notes.map(mapToDBModel);
     }
 
-    // eslint-disable-next-line class-methods-use-this
-    async verifyNoteOwner(id, owner) {
-        const query = {
-            text: "SELECT * FROM notes WHERE id = $1",
-            values: [id],
-        };
-
-        const note = (await this._pool.query(query)).rows[0];
-
-        if (!note) {
-            throw new NotFoundError("Catatan tidak ditemukan");
-        }
-
-        if (note.owner !== owner) {
-            throw new AuthorizationError(
-                "Anda tidak berhak mengakses resource ini"
-            );
-        }
-    }
-
     async getNoteById(id) {
         const query = {
-            text: "SELECT * FROM notes WHERE id = $1",
+            text: `
+                SELECT notes.*, users.username 
+                FROM notes
+                JOIN users
+                ON users.id = notes.owner
+                WHERE notes.id = $1
+            `,
             values: [id],
         };
 
@@ -85,7 +77,7 @@ class NotesService {
         const result = await this._pool.query(query);
 
         if (result.rowCount === 0) {
-            throw NotFoundError(
+            throw new NotFoundError(
                 "Gagal memperbarui catatan. Id tidak ditemukan"
             );
         }
@@ -103,6 +95,36 @@ class NotesService {
             throw new NotFoundError(
                 "Catatan gagal dihapus. Id tidak ditemukan"
             );
+        }
+    }
+
+    async verifyNoteAccess({ role = "", noteId, userId }) {
+        const getNoteByIdQuery = {
+            text: "SELECT * FROM notes WHERE id = $1",
+            values: [noteId],
+        };
+
+        const note = (await this._pool.query(getNoteByIdQuery)).rows[0];
+
+        if (!note) {
+            throw new NotFoundError("Catatan tidak ditemukan");
+        }
+
+        if (role === "owner" && note.owner !== userId) {
+            throw new AuthorizationError(
+                "Anda tidak berhak mengakses resource ini"
+            );
+        }
+
+        const getUserInCollabQuery = {
+            text: `SELECT * FROM collaborations WHERE note_id = $1 AND user_id = $2`,
+            values: [noteId, userId],
+        };
+
+        const collab = (await this._pool.query(getUserInCollabQuery)).rows[0];
+
+        if (note.owner !== userId && !collab) {
+            throw new InvariantError("Kolaborasi gagal diverifikasi");
         }
     }
 }
