@@ -1,7 +1,5 @@
 /* eslint-disable camelcase */
 
-exports.shorthands = undefined;
-
 exports.up = (pgm) => {
     // membuat user baru
     pgm.sql(`
@@ -19,9 +17,9 @@ exports.up = (pgm) => {
 
     // memberikan constraint foreign key pada owner terhadap kolom id dari tabel users
     pgm.addConstraint(
-        "notes",
-        "fk_notes.owner_users.id",
-        "FOREIGN KEY(owner) REFERENCES users(id) ON DELETE CASCADE"
+        "notes", // table name
+        "fk_notes.owner_users.id", // constraint_name
+        "FOREIGN KEY(owner) REFERENCES users(id) ON DELETE CASCADE" // expression (raw sql)
     );
 };
 
