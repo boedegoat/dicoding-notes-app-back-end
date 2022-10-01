@@ -13,7 +13,7 @@ class StorageService {
 
     writeFile(file, meta) {
         // create filename with current milliseconds
-        const filename = Date.now() + meta.filename;
+        const filename = `${Date.now()}-${meta.filename.replace(/\s/g, "-")}`;
 
         // create filePath from folder path + filename
         const filePath = path.join(this._folder, filename);
